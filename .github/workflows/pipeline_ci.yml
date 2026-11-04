@@ -1,0 +1,70 @@
+name: AuroraStream Data Engineering CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    name: Code Linting & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Linting Tools
+        run: |
+          pip install flake8 black sqlfluff pytest
+
+      - name: Flake8 Python Linting
+        run: |
+          flake8 streaming/ pyspark_jobs/ opensearch/ --count --max-line-length=120 --statistics
+
+      - name: SQLFluff Redshift SQL Linting
+        run: |
+          sqlfluff lint sql/ --dialect redshift
+
+  unit-tests:
+    name: Pipeline Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run PyTest Test Suite
+        run: |
+          pytest tests/ -v --tb=short
+
+  terraform-lint:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Format Check
+        run: |
+          cd terraform
+          terraform fmt -check
