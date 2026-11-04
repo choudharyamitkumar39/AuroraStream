@@ -9,7 +9,6 @@ Implements:
 
 import sys
 import os
-from datetime import datetime
 
 try:
     from awsglue.utils import getResolvedOptions
@@ -22,6 +21,7 @@ except ImportError:
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
+
 
 def init_spark():
     if IS_GLUE:
@@ -49,9 +49,7 @@ def build_star_schema(spark, silver_path, gold_path):
     df_silver = spark.read.parquet(silver_path)
     df_silver.createOrReplaceTempView("silver_events")
 
-    # 
-    # 1. DIMENSION: Date Spine & Amazon Retail Event Dimension
-    # 
+    # 1. DIMENSION: Date Spine & Retail Event Dimension
     print("[SPARK:GOLD] Generating dim_date...")
     dim_date = df_silver.select("event_date").distinct() \
         .withColumn("date_key", F.date_format("event_date", "yyyyMMdd").cast("int")) \
@@ -63,15 +61,15 @@ def build_star_schema(spark, silver_path, gold_path):
         .withColumn("day_name", F.date_format("event_date", "EEEE")) \
         .withColumn("is_weekend", F.when(F.col("day_of_week").isin([1, 7]), True).otherwise(False)) \
         .withColumn("is_prime_day_event",
-                    F.when((F.col("month") == 7) & (F.dayofmonth("event_date").between(11, 16)), True).otherwise(False)) \
+                    F.when((F.col("month") == 7) & (F.dayofmonth("event_date").between(11, 16)), True)
+                    .otherwise(False)) \
         .withColumn("is_diwali_sale_event",
-                    F.when((F.col("month") == 10) & (F.dayofmonth("event_date").between(15, 31)), True).otherwise(False))
+                    F.when((F.col("month") == 10) & (F.dayofmonth("event_date").between(15, 31)), True)
+                    .otherwise(False))
 
     dim_date.write.mode("overwrite").parquet(f"{gold_path}/dim_date")
 
-    # 
     # 2. DIMENSION: SCD Type 2 Customers (Slowly Changing Dimensions)
-    # 
     print("[SPARK:GOLD] Building dim_customers (SCD Type 2)...")
     cust_window = Window.partitionBy("customer_id").orderBy("event_timestamp_utc")
 
@@ -87,9 +85,7 @@ def build_star_schema(spark, silver_path, gold_path):
 
     dim_customers_scd2.write.mode("overwrite").parquet(f"{gold_path}/dim_customers")
 
-    # 
     # 3. DIMENSION: Product Catalog
-    # 
     print("[SPARK:GOLD] Building dim_products...")
     dim_products = df_silver.filter(F.col("product_id").isNotNull()) \
         .select("product_id", "category") \
@@ -101,9 +97,7 @@ def build_star_schema(spark, silver_path, gold_path):
 
     dim_products.write.mode("overwrite").parquet(f"{gold_path}/dim_products")
 
-    # 
     # 4. FACT: Order Transactions (Fact Sales)
-    # 
     print("[SPARK:GOLD] Building fact_orders...")
     df_orders = df_silver.filter(F.col("event_type").isin(["ORDER_PLACED", "ORDER_CANCELLED"]))
 
@@ -121,15 +115,13 @@ def build_star_schema(spark, silver_path, gold_path):
         "discount_pct",
         "subtotal_amount",
         F.round(F.col("unit_price") * F.col("quantity") * F.col("discount_pct"), 2).alias("discount_amount"),
-        F.round(F.col("subtotal_amount") * 0.35, 2).alias("estimated_gross_margin"), # 35% margin model
+        F.round(F.col("subtotal_amount") * 0.35, 2).alias("estimated_gross_margin"),
         "is_prime_eligible"
     )
 
     fact_orders.write.mode("overwrite").partitionBy("date_key").parquet(f"{gold_path}/fact_orders")
 
-    # 
     # 5. FACT: Clickstream & Funnel Engagement
-    # 
     print("[SPARK:GOLD] Building fact_clickstream...")
     df_clicks = df_silver.filter(F.col("event_type").isin(["CLICKSTREAM_VIEW", "CART_ADD"]))
 
@@ -146,7 +138,6 @@ def build_star_schema(spark, silver_path, gold_path):
     )
 
     fact_clickstream.write.mode("overwrite").partitionBy("date_key").parquet(f"{gold_path}/fact_clickstream")
-
     print("[SPARK:SUCCESS] Gold Dimensional Lakehouse tables written successfully.")
 
 

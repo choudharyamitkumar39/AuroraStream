@@ -18,7 +18,7 @@ except ImportError:
     IS_GLUE = False
 
 from pyspark.sql import SparkSession
-from pyspark.sql import functions as F
+
 
 def run_distributed_compaction():
     if IS_GLUE:
@@ -60,6 +60,7 @@ def run_distributed_compaction():
         .parquet(output_path)
 
     print(f"[SPARK:COMPACT:SUCCESS] Successfully wrote compacted dataset to {output_path}.")
+
 
 if __name__ == "__main__":
     run_distributed_compaction()

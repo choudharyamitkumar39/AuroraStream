@@ -12,7 +12,6 @@ Key Transformations:
 
 import sys
 import os
-from datetime import datetime
 
 try:
     from awsglue.utils import getResolvedOptions
@@ -26,6 +25,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
+
 def init_spark():
     if IS_GLUE:
         sc = SparkContext()
@@ -36,7 +36,6 @@ def init_spark():
         silver_path = f"s3://{args['SILVER_BUCKET']}/events"
         return spark, bronze_path, silver_path
     else:
-        # Local / Test Spark session
         spark = SparkSession.builder \
             .appName("AuroraStream-BronzeToSilver") \
             .master("local[*]") \
@@ -52,7 +51,6 @@ def run_bronze_to_silver():
     spark, bronze_path, silver_path = init_spark()
     print(f"[SPARK:START] Processing Bronze from: {bronze_path}")
 
-    # Read raw JSON / JSONL from Bronze
     if not os.path.exists(bronze_path) and not bronze_path.startswith("s3://"):
         print(f"[SPARK:WARN] Bronze path does not exist yet: {bronze_path}")
         return
@@ -65,7 +63,7 @@ def run_bronze_to_silver():
         print("[SPARK] No records to process. Exiting.")
         return
 
-    # 1. Deduplication using window function
+    # Deduplication using window function
     window_dedup = Window.partitionBy("event_id").orderBy(F.col("event_timestamp").desc())
     df_dedup = df_raw.withColumn("row_num", F.row_number().over(window_dedup)) \
                      .filter(F.col("row_num") == 1) \
@@ -75,12 +73,12 @@ def run_bronze_to_silver():
     duplicates_removed = raw_count - dedup_count
     print(f"[SPARK] Deduplication: Removed {duplicates_removed:,} duplicate events.")
 
-    # 2. PII Masking (SHA-256 for IP address and customer identifiers)
+    # PII Masking (SHA-256 for IP address and customer identifiers)
     df_masked = df_dedup \
         .withColumn("ip_address_hash", F.sha2(F.col("ip_address"), 256)) \
         .drop("ip_address")
 
-    # 3. Timestamp Normalization & Partition Extraction
+    # Timestamp Normalization & Partition Extraction
     df_clean = df_masked \
         .withColumn("event_timestamp_utc", F.to_timestamp("event_timestamp")) \
         .withColumn("event_date", F.to_date("event_timestamp_utc")) \
@@ -88,14 +86,13 @@ def run_bronze_to_silver():
         .withColumn("month", F.month("event_date")) \
         .withColumn("day", F.dayofmonth("event_date"))
 
-    # 4. Write to S3 Silver in snappy-compressed Parquet format partitioned by event_date & event_type
     print(f"[SPARK] Writing {dedup_count:,} cleaned records to Silver: {silver_path}")
     df_clean.write \
         .mode("overwrite") \
         .partitionBy("event_date", "event_type") \
         .parquet(silver_path)
 
-    print(f"[SPARK:SUCCESS] Bronze to Silver transformation complete.")
+    print("[SPARK:SUCCESS] Bronze to Silver transformation complete.")
 
 
 if __name__ == "__main__":

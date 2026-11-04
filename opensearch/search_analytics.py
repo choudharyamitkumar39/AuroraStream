@@ -18,14 +18,14 @@ QUERIES = [
     "stainless steel water bottle 1L"
 ]
 
+
 def simulate_search_queries(num_queries: int = 100):
     latencies = []
     print(f"\n[OPENSEARCH] Simulating {num_queries} real-time user search queries...")
 
     for _ in range(num_queries):
-        query = random.choice(QUERIES)
+        _ = random.choice(QUERIES)
         t0 = time.perf_counter()
-        # Simulated OpenSearch search execution latency (distributed Lucene index lookup)
         time.sleep(random.uniform(0.005, 0.035))
         elapsed_ms = (time.perf_counter() - t0) * 1000
         latencies.append(elapsed_ms)
@@ -48,7 +48,8 @@ def simulate_search_queries(num_queries: int = 100):
     print(f"  P50 Latency : {metrics['p50_latency_ms']} ms")
     print(f"  P95 Latency : {metrics['p95_latency_ms']} ms")
     print(f"  P99 Latency : {metrics['p99_latency_ms']} ms (SLA Target < 50ms)")
-    print(f"  Status      : {'[PASS] SLA COMPLIANT' if metrics['sla_met'] else '[FAIL] SLA BREACH'}\n")
+    status_tag = "[PASS] SLA COMPLIANT" if metrics['sla_met'] else "[FAIL] SLA BREACH"
+    print(f"  Status      : {status_tag}\n")
 
     out_path = "data/opensearch_index/search_sla_benchmark.json"
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -56,6 +57,7 @@ def simulate_search_queries(num_queries: int = 100):
         json.dump(metrics, f, indent=2)
 
     return metrics
+
 
 if __name__ == "__main__":
     simulate_search_queries()

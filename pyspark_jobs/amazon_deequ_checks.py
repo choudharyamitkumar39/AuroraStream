@@ -7,12 +7,12 @@ Validates Gold & Silver Lakehouse datasets against production enterprise constra
   - Range and Catalog Categorical Validity
 """
 
-import sys
 import os
 import json
 from datetime import datetime
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+
 
 def run_data_quality_suite(gold_path: str = "data/lakehouse/gold"):
     spark = SparkSession.builder \
@@ -80,7 +80,7 @@ def run_data_quality_suite(gold_path: str = "data/lakehouse/gold"):
     all_passed = True
     print("\n--- RESULTS ---")
     for c in checks:
-        status_icon = "[PASS] PASS" if c["passed"] else "[FAIL] FAIL"
+        status_icon = "[PASS]" if c["passed"] else "[FAIL]"
         print(f"  {status_icon} | {c['check']} ({c['detail']})")
         if not c["passed"]:
             all_passed = False
@@ -102,6 +102,7 @@ def run_data_quality_suite(gold_path: str = "data/lakehouse/gold"):
     print(f"\nReport written to: {report_path}")
     print("=" * 65 + "\n")
     return all_passed
+
 
 if __name__ == "__main__":
     run_data_quality_suite()

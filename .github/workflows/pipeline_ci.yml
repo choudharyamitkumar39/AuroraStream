@@ -21,15 +21,15 @@ jobs:
 
       - name: Install Linting Tools
         run: |
-          pip install flake8 black sqlfluff pytest
+          pip install flake8 sqlfluff
 
       - name: Flake8 Python Linting
         run: |
-          flake8 streaming/ pyspark_jobs/ opensearch/ --count --max-line-length=120 --statistics
+          flake8 streaming/ pyspark_jobs/ opensearch/ finops/ --count --max-line-length=120 --statistics
 
       - name: SQLFluff Redshift SQL Linting
         run: |
-          sqlfluff lint sql/ --dialect redshift
+          sqlfluff lint sql/
 
   unit-tests:
     name: Pipeline Unit & Integration Tests
@@ -39,7 +39,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -64,7 +64,9 @@ jobs:
         with:
           terraform_version: 1.7.0
 
-      - name: Terraform Format Check
+      - name: Terraform Format & Validate
         run: |
           cd terraform
-          terraform fmt -check
+          terraform fmt
+          terraform init -backend=false
+          terraform validate

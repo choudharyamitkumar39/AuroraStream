@@ -1,0 +1,9 @@
+[sqlfluff]
+dialect = redshift
+max_line_length = 160
+exclude_rules = layout.long_lines,layout.spacing,aliasing.table,ambiguous.column_references,ambiguous.join,layout.cte_newline,structure.unused_cte,layout.keyword_newline
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = false

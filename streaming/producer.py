@@ -7,11 +7,10 @@ Simulates real-time e-commerce user traffic:
 
 Supports dual mode:
   1. AWS Mode: Real AWS Kinesis Data Streams (boto3)
-  2. Local Mode: In-memory / LocalStack / local filesystem buffer for zero-cost rapid dev
+  2. Local Mode: In-memory / local filesystem buffer for zero-cost rapid dev
 """
 
 import os
-import sys
 import json
 import time
 import uuid
@@ -28,8 +27,11 @@ DEVICES = ["iOS-App", "Android-App", "Desktop-Chrome", "Mobile-Safari", "Tablet"
 PAYMENT_METHODS = ["AmazonPay", "CreditCard", "DebitCard", "UPI", "COD", "NetBanking"]
 CITIES = ["Bengaluru", "Hyderabad", "Chennai", "Mumbai", "Delhi", "Pune", "Kolkata"]
 
+
 class AuroraStreamProducer:
-    def __init__(self, mode: str = "local", stream_name: str = "amazon-aurorastream-order-events", region: str = "us-east-1"):
+    def __init__(
+        self, mode: str = "local", stream_name: str = "amazon-aurorastream-order-events", region: str = "us-east-1"
+    ):
         self.mode = mode
         self.stream_name = stream_name
         self.region = region
@@ -85,12 +87,13 @@ class AuroraStreamProducer:
             })
 
         elif event_type in ["CLICKSTREAM_VIEW", "CART_ADD"]:
+            referral = random.choice(["https://www.google.com", "https://amazon.in/deals", "direct", "email"])
             base_event.update({
                 "session_id": f"SESS-{random.randint(100000, 999999)}",
                 "product_id": product_id,
                 "category": random.choice(CATEGORIES),
                 "dwell_time_seconds": random.randint(2, 300),
-                "referral_url": random.choice(["https://www.google.com", "https://amazon.in/deals", "direct", "email_campaign"])
+                "referral_url": referral
             })
 
         elif event_type == "REVIEW_SUBMITTED":
@@ -122,22 +125,24 @@ class AuroraStreamProducer:
             )
             failed = response.get("FailedRecordCount", 0)
             success = batch_size - failed
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] AWS Kinesis sent {success}/{batch_size} records. (Failed: {failed})")
+            now_str = datetime.now().strftime('%H:%M:%S')
+            print(f"[{now_str}] AWS Kinesis sent {success}/{batch_size} records. (Failed: {failed})")
             return success
         else:
-            # Local mode: write batch to partitioned local buffer
             ts = int(time.time())
             filename = os.path.join(self.local_buffer_dir, f"batch_{ts}_{uuid.uuid4().hex[:6]}.jsonl")
             with open(filename, "w", encoding="utf-8") as f:
                 for r in records:
                     f.write(json.dumps(r) + "\n")
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] LOCAL Mock buffered {len(records)} records -> {os.path.basename(filename)}")
+            now_str = datetime.now().strftime('%H:%M:%S')
+            file_base = os.path.basename(filename)
+            print(f"[{now_str}] LOCAL Mock buffered {len(records)} records -> {file_base}")
             return len(records)
 
     def run_stream(self, total_events: int = 500, batch_size: int = 50, interval_seconds: float = 0.5):
-        print(f"\n Starting AuroraStream Producer ({self.mode.upper()} mode)")
+        print(f"\nStarting AuroraStream Producer ({self.mode.upper()} mode)")
         print(f"   Target Events: {total_events} | Batch Size: {batch_size} | Interval: {interval_seconds}s\n")
-        
+
         sent = 0
         while sent < total_events:
             current_batch = min(batch_size, total_events - sent)
@@ -145,7 +150,7 @@ class AuroraStreamProducer:
             if sent < total_events:
                 time.sleep(interval_seconds)
 
-        print(f"\n[PASS] Finished! Successfully emitted {sent} events.\n")
+        print(f"\n[OK] Successfully emitted {sent} events.\n")
 
 
 if __name__ == "__main__":
@@ -153,7 +158,9 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=["aws", "local"], default="local", help="Mode: aws or local")
     parser.add_argument("--events", type=int, default=500, help="Total number of events to produce")
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size per write")
-    parser.add_argument("--stream-name", type=str, default="amazon-aurorastream-order-events", help="Kinesis stream name")
+    parser.add_argument(
+        "--stream-name", type=str, default="amazon-aurorastream-order-events", help="Kinesis stream name"
+    )
     parser.add_argument("--region", type=str, default="us-east-1", help="AWS region")
     args = parser.parse_args()
 

@@ -11,6 +11,7 @@ import json
 import argparse
 from datetime import datetime
 
+
 class OpenSearchCatalogIndexer:
     def __init__(self, endpoint: str = None, index_name: str = "amazon-product-catalog"):
         self.endpoint = endpoint or os.environ.get("OPENSEARCH_ENDPOINT", "localhost:9200")
@@ -67,7 +68,6 @@ class OpenSearchCatalogIndexer:
             }
             sample_docs.append(doc)
 
-        # In local/mock mode, save index payload to disk
         output_dir = "data/opensearch_index"
         os.makedirs(output_dir, exist_ok=True)
         out_file = os.path.join(output_dir, f"{self.index_name}.json")
@@ -77,8 +77,10 @@ class OpenSearchCatalogIndexer:
         print(f"[OPENSEARCH:SUCCESS] Successfully indexed {len(sample_docs)} catalog documents -> {out_file}")
         return sample_docs
 
+
 def random_id(idx):
     return f"{idx:08d}"
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
